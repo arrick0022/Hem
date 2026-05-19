@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     `url=${encodeURIComponent(targetUrl)}` +
     `&x-api-key=${token}` +
     `&browser=true` +
-    `&proxy_country=TW`;
+    `&proxy_country=hk`;
 
   try {
     const res = await fetch(apiUrl, { cache: 'no-store' });

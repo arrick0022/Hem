@@ -19,7 +19,7 @@ async function fetchWithScrapingAnt(targetUrl: string): Promise<string> {
     `url=${encodeURIComponent(targetUrl)}` +
     `&x-api-key=${token}` +
     `&browser=true` +           // 真實瀏覽器，繞過 Cloudflare
-    `&proxy_country=TW`;        // 使用台灣 IP
+    `&proxy_country=hk`;        // 使用香港 IP（最近且支援）
 
   const res = await fetch(apiUrl, { cache: 'no-store' });
 
