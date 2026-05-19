@@ -1,7 +1,14 @@
 import { Redis } from '@upstash/redis';
 import type { Product } from './scraper';
 
-const redis = Redis.fromEnv();
+// 延遲初始化，避免建置時找不到環境變數
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    _redis = Redis.fromEnv();
+  }
+  return _redis;
+}
 
 const KEYS = {
   knownProducts: 'hermes:known_products',
@@ -20,20 +27,20 @@ export interface CheckStats {
 // ─── Known Products ────────────────────────────────────────────────────────
 
 export async function getKnownProducts(): Promise<Record<string, Product>> {
-  const data = await redis.get<Record<string, Product>>(KEYS.knownProducts);
+  const data = await getRedis().get<Record<string, Product>>(KEYS.knownProducts);
   return data ?? {};
 }
 
 export async function saveKnownProducts(
   products: Record<string, Product>
 ): Promise<void> {
-  await redis.set(KEYS.knownProducts, products);
+  await getRedis().set(KEYS.knownProducts, products);
 }
 
 // ─── New Products History ─────────────────────────────────────────────────
 
 export async function getNewHistory(): Promise<Product[]> {
-  const data = await redis.get<Product[]>(KEYS.newHistory);
+  const data = await getRedis().get<Product[]>(KEYS.newHistory);
   return data ?? [];
 }
 
@@ -41,13 +48,13 @@ export async function appendNewProducts(products: Product[]): Promise<void> {
   const existing = await getNewHistory();
   // 最新的排前面，最多保留 200 筆
   const updated = [...products, ...existing].slice(0, 200);
-  await redis.set(KEYS.newHistory, updated);
+  await getRedis().set(KEYS.newHistory, updated);
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────
 
 export async function getStats(): Promise<CheckStats> {
-  const data = await redis.get<CheckStats>(KEYS.stats);
+  const data = await getRedis().get<CheckStats>(KEYS.stats);
   return (
     data ?? {
       totalChecks: 0,
@@ -65,5 +72,5 @@ export async function updateStats(newCount: number): Promise<void> {
     lastCheckAt: new Date().toISOString(),
     lastNewAt: newCount > 0 ? new Date().toISOString() : stats.lastNewAt,
   };
-  await redis.set(KEYS.stats, updated);
+  await getRedis().set(KEYS.stats, updated);
 }
