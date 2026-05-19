@@ -13,34 +13,42 @@ export async function GET(req: NextRequest) {
 
   const targetUrl = 'https://www.hermes.com/tw/zh/category/women/bags-and-small-leather-goods/bags/';
 
-  const apiUrl =
-    `https://api.scrapingant.com/v2/general?` +
-    `url=${encodeURIComponent(targetUrl)}` +
-    `&x-api-key=${token}` +
-    `&browser=true` +
-    `&proxy_country=hk`;
+  // 測試多種組合，找出哪個能繞過 Cloudflare
+  const configs = [
+    { label: 'browser=true, no proxy',   params: 'browser=true' },
+    { label: 'browser=true, proxy=sg',   params: 'browser=true&proxy_country=sg' },
+    { label: 'browser=true, proxy=jp',   params: 'browser=true&proxy_country=jp' },
+    { label: 'browser=true, proxy=us',   params: 'browser=true&proxy_country=us' },
+    { label: 'browser=true, proxy=gb',   params: 'browser=true&proxy_country=gb' },
+  ];
 
-  try {
-    const res = await fetch(apiUrl, { cache: 'no-store' });
-    const text = await res.text();
+  const results = [];
 
-    return NextResponse.json({
-      status: res.status,
-      ok: res.ok,
-      contentType: res.headers.get('content-type'),
-      bodyLength: text.length,
-      // 回傳前 2000 字，看實際 HTML 結構
-      preview: text.slice(0, 2000),
-      // 看有沒有 __NEXT_DATA__
-      hasNextData: text.includes('__NEXT_DATA__'),
-      // 看有沒有產品相關關鍵字
-      hasProduct: text.includes('product') || text.includes('Product'),
-      hasBag: text.includes('bag') || text.includes('Bag') || text.includes('sac'),
-      // ScrapingAnt 剩餘配額
-      creditsUsed: res.headers.get('x-credits-used'),
-      creditsRemaining: res.headers.get('x-credits-remaining'),
-    });
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+  for (const cfg of configs) {
+    const apiUrl =
+      `https://api.scrapingant.com/v2/general?` +
+      `url=${encodeURIComponent(targetUrl)}` +
+      `&x-api-key=${token}` +
+      `&${cfg.params}`;
+
+    try {
+      const res = await fetch(apiUrl, { cache: 'no-store' });
+      const text = await res.text();
+      results.push({
+        config: cfg.label,
+        status: res.status,
+        ok: res.ok,
+        bodyLength: text.length,
+        hasNextData: text.includes('__NEXT_DATA__'),
+        hasProduct: text.includes('product') || text.includes('Product'),
+        preview: res.ok ? text.slice(0, 300) : text.slice(0, 200),
+      });
+      // 找到成功的就停止（省配額）
+      if (res.ok && text.length > 10000) break;
+    } catch (err) {
+      results.push({ config: cfg.label, error: String(err) });
+    }
   }
+
+  return NextResponse.json(results, { status: 200 });
 }
