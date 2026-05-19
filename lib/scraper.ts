@@ -31,10 +31,12 @@ async function fetchWithScrapingAnt(targetUrl: string): Promise<string> {
   return res.text();
 }
 
-// Hermes 台灣監控目標（只監控最重要的頁面，節省 API 配額）
+// Hermes 台灣監控目標（只監控皮件包包，排除衣服、絲巾等）
 const TARGETS = [
-  { url: 'https://www.hermes.com/tw/zh/maison-hermes/nouvelles-entrees/', category: '最新上架' },
   { url: 'https://www.hermes.com/tw/zh/category/women/bags-and-small-leather-goods/bags/', category: '女士包款' },
+  { url: 'https://www.hermes.com/tw/zh/category/men/bags-and-small-leather-goods/bags/', category: '男士包款' },
+  { url: 'https://www.hermes.com/tw/zh/category/women/bags-and-small-leather-goods/small-leather-goods/', category: '女士皮夾皮件' },
+  { url: 'https://www.hermes.com/tw/zh/category/men/bags-and-small-leather-goods/small-leather-goods/', category: '男士皮夾皮件' },
 ];
 
 function extractProducts(html: string, category: string): Product[] {
