@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --hermes-orange: #e8632a;
+  --hermes-dark: #1a1a1a;
+  --hermes-cream: #f5f0e8;
+  --hermes-gold: #c9a84c;
+}
+
+body {
+  background-color: var(--hermes-cream);
+  color: var(--hermes-dark);
+}
