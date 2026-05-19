@@ -1,0 +1,43 @@
+name: Hermes Bag Monitor
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # 每 5 分鐘執行一次
+  workflow_dispatch:          # 手動觸發（測試用）
+
+concurrency:
+  group: hermes-monitor
+  cancel-in-progress: true    # 確保不重疊執行
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-v1
+
+      - name: Install dependencies
+        run: cd scripts && npm install
+
+      - name: Install Playwright Chromium
+        run: cd scripts && npx playwright install chromium --with-deps
+
+      - name: Run Hermes monitor
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: cd scripts && node monitor.js
