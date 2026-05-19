@@ -11,78 +11,66 @@ const HEADERS = {
   'Cache-Control': 'no-cache',
 };
 
-async function tryFetch(url: string) {
-  const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
-  const text = await res.text();
-  const isCloudflare = text.includes('Please enable JS') || text.includes('cf-ray') || text.includes('_cf_chl');
-  return {
-    url,
-    status: res.status,
-    ok: res.ok && !isCloudflare,
-    isCloudflareBlock: isCloudflare,
-    bodyLength: text.length,
-    preview: text.slice(0, 300),
-    rawText: text, // 只內部使用
-  };
-}
-
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret');
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const results = [];
+  // ── 抓首頁 ────────────────────────────────────────────────────────
+  const homeRes = await fetch('https://www.hermes.com/tw/zh/', {
+    headers: HEADERS, cache: 'no-store',
+  });
+  const html = await homeRes.text();
 
-  // ── 測試各種 Hermes URL 是否可直接存取 ──────────────────────────
-  const urlsToTest = [
-    'https://www.hermes.com/tw/zh/',
-    'https://www.hermes.com/tw/zh/maison-hermes/nouvelles-entrees/',
-    'https://www.hermes.com/sitemap.xml',
-    'https://www.hermes.com/tw/zh/sitemap.xml',
-    // 試試看直接抓個別產品頁（Birkin 25）
-    'https://www.hermes.com/tw/zh/product/birkin-25-bag-H084300CKAA/',
-  ];
+  // ── 1. 找 JSON-LD 結構化資料（Google SEO 用，通常含產品資訊）──────
+  const jsonLdMatches = [...html.matchAll(/<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)];
+  const jsonLdData = jsonLdMatches.map(m => {
+    try { return JSON.parse(m[1]); } catch { return m[1].slice(0, 200); }
+  });
 
-  for (const url of urlsToTest) {
-    try {
-      const r = await tryFetch(url);
-      results.push({
-        url: r.url,
-        status: r.status,
-        accessible: r.ok,
-        cloudflareBlock: r.isCloudflareBlock,
-        bodyLength: r.bodyLength,
-        preview: r.preview,
-      });
-    } catch (e) {
-      results.push({ url, error: String(e) });
-    }
+  // ── 2. 找所有 <script src="..."> 外部 JS 檔案 ─────────────────────
+  const scriptSrcs = [...html.matchAll(/src="(https?:\/\/[^"]+\.js[^"]*)"/g)].map(m => m[1]);
+  const hermesScripts = scriptSrcs.filter(s => s.includes('hermes.com'));
+
+  // ── 3. 找內嵌 API 端點線索 ─────────────────────────────────────────
+  const apiPatterns = [
+    ...html.matchAll(/["'](https?:\/\/[^"']*api[^"']{3,50})["']/gi),
+    ...html.matchAll(/["'](https?:\/\/[^"']*graphql[^"']{0,50})["']/gi),
+    ...html.matchAll(/["'](https?:\/\/[^"']*content\.[^"']{3,50})["']/gi),
+  ].map(m => m[1]);
+  const uniqueApis = [...new Set(apiPatterns)].slice(0, 20);
+
+  // ── 4. 找 window.__STATE__ 或其他全域 JS 物件（含產品資料）──────────
+  const stateMatch = html.match(/window\.__(?:STATE|DATA|INITIAL_STATE|STORE)[^=]*=\s*(\{[\s\S]{0,2000})/);
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+
+  // ── 5. 包款關鍵字出現次數 ──────────────────────────────────────────
+  const bagKeywords: Record<string, number> = {};
+  for (const kw of ['Birkin', 'Kelly', 'Constance', 'Bolide', 'Picotin', 'Lindy', 'Evelyne', 'Garden Party', '包', 'bag', 'leather']) {
+    const count = (html.match(new RegExp(kw, 'gi')) ?? []).length;
+    if (count > 0) bagKeywords[kw] = count;
   }
 
-  // ── 解析首頁內的包款連結 ──────────────────────────────────────────
-  try {
-    const home = await tryFetch('https://www.hermes.com/tw/zh/');
-    if (home.ok) {
-      const html = home.rawText;
-      // 找出所有 /tw/zh/ 路徑連結
-      const allLinks = [...html.matchAll(/href="(\/tw\/zh\/[^"]+)"/g)].map(m => m[1]);
-      // 過濾出像是產品頁的連結（包含 product 或 /tw/zh/ 下 5 段以上路徑）
-      const bagLinks = allLinks.filter(l =>
-        l.includes('/product/') ||
-        (l.split('/').length >= 7 && !l.includes('/category/') && !l.includes('/maison'))
-      );
-      const uniqueBagLinks = [...new Set(bagLinks)];
-      results.push({
-        test: '首頁包款連結',
-        totalLinks: allLinks.length,
-        bagLinkCount: uniqueBagLinks.length,
-        sampleBagLinks: uniqueBagLinks.slice(0, 10),
-      });
-    }
-  } catch (e) {
-    results.push({ test: '首頁解析', error: String(e) });
-  }
+  // ── 6. 找所有 /tw/zh/product/ 連結並分類 ─────────────────────────
+  const productLinks = [...new Set([...html.matchAll(/href="(\/tw\/zh\/product\/[^"]+)"/g)].map(m => m[1]))];
+  const bagProducts = productLinks.filter(l =>
+    /birkin|kelly|constance|bolide|picotin|lindy|evelyne|garden|sac|bag|包|皮/i.test(l)
+  );
 
-  return NextResponse.json(results, { status: 200 });
+  return NextResponse.json({
+    htmlSize: html.length,
+    jsonLdCount: jsonLdData.length,
+    jsonLdData: jsonLdData.slice(0, 3),
+    hermesScripts: hermesScripts.slice(0, 5),
+    apiEndpoints: uniqueApis,
+    hasWindowState: !!stateMatch,
+    windowStatePreview: stateMatch?.[1]?.slice(0, 500),
+    hasNextData: !!nextDataMatch,
+    nextDataPreview: nextDataMatch?.[1]?.slice(0, 500),
+    bagKeywords,
+    totalProductLinks: productLinks.length,
+    bagProductLinks: bagProducts,
+    allProductLinks: productLinks.slice(0, 15),
+  }, { status: 200 });
 }
