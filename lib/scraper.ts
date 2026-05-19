@@ -18,8 +18,8 @@ async function fetchWithScrapingAnt(targetUrl: string): Promise<string> {
   const apiUrl = `https://api.scrapingant.com/v2/general?` +
     `url=${encodeURIComponent(targetUrl)}` +
     `&x-api-key=${token}` +
-    `&browser=false` +          // 不需要完整瀏覽器，節省配額
-    `&proxy_type=datacenter`;
+    `&browser=true` +           // 真實瀏覽器，繞過 Cloudflare
+    `&proxy_country=TW`;        // 使用台灣 IP
 
   const res = await fetch(apiUrl, { cache: 'no-store' });
 
