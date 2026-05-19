@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
       scanned: current.length,
       newCount: newProducts.length,
       newProducts: newProducts.map((p) => p.name),
+      sample: current.slice(0, 3).map((p) => ({ id: p.id, name: p.name })),
     });
   } catch (err) {
     console.error('[check] Error:', err);
