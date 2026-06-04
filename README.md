@@ -1,60 +1,60 @@
-# Hermès Monitor 🛍️
+# 川普跟單模擬組合 📈 Trump Trades Sim
 
-自動監控 Hermès 台灣官網，發現新包款立即寄送 Email 通知。
+用虛擬 **$100,000** 比照美國總統川普向 **OGE（政府道德辦公室）申報的股票交易**，
+**排除其個人控股 DJT、等權重**配置，做成一個**每日損益即時更新的網頁儀表板**。
+部署到 Vercel 後，在 iPhone 上「加入主畫面」即可像 App 一樣隨時打開查看。
 
-## 部署步驟
+---
 
-### 第一步：安裝 Node.js
-前往 https://nodejs.org 下載並安裝 LTS 版本
+## 它在做什麼
 
-### 第二步：安裝依賴套件
+- **資料源**：OGE Form 278-T（川普季度財產申報）。注意申報**法定延遲 30–45 天，非即時**。
+  目前以 `lib/trades.ts` 內人工整理的 Q1 2026 代表性交易為準；
+  `lib/oge.ts` 提供從 OGE 官方入口自動抓取的起點（PDF 逐筆解析為後續工作）。
+- **策略**：排除 `DJT`（佔比 >99%），把川普「買進」過的不重複標的**等權重**配置 $100,000。
+- **現價**：由 Stooq / Yahoo 免金鑰端點即時抓取（伺服器端），計算市值與未實現損益。
+
+> ⚠️ 純屬虛擬模擬與資訊用途，**非投資建議**。OGE 多筆交易標註「券商代操」，未必為川普本人決策。
+
+---
+
+## 在 iPhone 上部署到 Vercel（一次性，約 5 分鐘）
+
+> 全程在手機瀏覽器即可完成，不需要電腦。
+
+1. 程式碼已在 GitHub 分支 `claude/trump-stock-trading-sim-v0wCN`。
+   先到你的 GitHub repo，把這個分支合併到 `main`（或部署時直接選這個分支）。
+2. 手機 Safari 開 **https://vercel.com** → 用 GitHub 帳號登入。
+3. 點 **Add New… → Project** → 選這個 repo（`hem`）→ **Import**。
+4. 框架自動偵測為 **Next.js**，**不需要設定任何環境變數**，直接點 **Deploy**。
+5. 等約 1 分鐘，部署完成會給你一個網址，例如
+   `https://hem-xxxx.vercel.app`。
+6. 用 Safari 打開該網址 → 點底部「分享」→ **加入主畫面**。
+   桌面就會出現「川普跟單」圖示，點開就是即時損益儀表板。✅
+
+之後每次打開，現價即時抓取、損益自動更新（頁面每 5 分鐘也會自動刷新）。
+
+---
+
+## 本機開發
+
 ```bash
 npm install
+npm run dev      # http://localhost:3000
 ```
 
-### 第三步：建立 Upstash Redis（免費）
-1. 前往 https://console.upstash.com 註冊
-2. 點 「Create Database」→ 選 Regional → 選 ap-northeast-1（東京）
-3. 建立後複製 REST URL 和 REST Token
+## 專案結構
 
-### 第四步：取得 Gmail 應用程式密碼
-1. 前往 https://myaccount.google.com/security
-2. 啟用「兩步驟驗證」
-3. 搜尋「應用程式密碼」→ 建立一個新的
-4. 複製 16 位數密碼（格式：xxxx xxxx xxxx xxxx）
+| 檔案 | 作用 |
+|---|---|
+| `lib/trades.ts` | 川普申報交易種子資料、$100K 本金、排除 DJT、標的池 |
+| `lib/prices.ts` | 即時股價抓取（Stooq 主、Yahoo 備援） |
+| `lib/portfolio.ts` | 模擬引擎：等權重配置、市值與損益計算 |
+| `lib/oge.ts` | OGE 官方入口抓取（自動更新起點） |
+| `app/api/portfolio/route.ts` | 回傳組合快照 JSON |
+| `app/page.tsx` | 行動優先的損益儀表板 |
 
-### 第五步：上傳到 GitHub
-1. 前往 https://github.com 建立新 repository（名稱：hermes-monitor）
-2. 在桌面 hermes-monitor 資料夾中：
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/你的帳號/hermes-monitor.git
-git push -u origin main
-```
+## 已知限制
 
-### 第六步：部署到 Vercel
-1. 前往 https://vercel.com 用 GitHub 帳號登入
-2. 點「Add New Project」→ 選 hermes-monitor
-3. 在「Environment Variables」加入以下變數：
-   - UPSTASH_REDIS_REST_URL
-   - UPSTASH_REDIS_REST_TOKEN
-   - EMAIL_SENDER
-   - EMAIL_APP_PASSWORD
-   - EMAIL_RECIPIENT
-   - CRON_SECRET（自訂一串隨機字串）
-4. 點「Deploy」
-
-### 第七步：設定 cron-job.org（每 3 分鐘觸發）
-1. 前往 https://cron-job.org 免費註冊
-2. 點「Create cronjob」
-3. 填入：
-   - URL：`https://你的網站.vercel.app/api/check?secret=你的CRON_SECRET`
-   - 執行頻率：每 3 分鐘
-4. 儲存
-
-## 完成！🎉
-- 網站：https://你的網站.vercel.app
-- 每 3 分鐘自動掃描 Hermès 台灣官網
-- 發現新品立即寄 Email 給您
+- 「即時」僅在開放網路環境（Vercel / 本機）生效；交易清單仍隨 OGE 申報低頻更新。
+- 種子建倉價為概略值，部署端可改以建倉日歷史股價覆寫以提高準確度。

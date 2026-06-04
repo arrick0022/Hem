@@ -2,253 +2,217 @@
 
 import { useEffect, useState, useCallback } from 'react';
 
-interface Product {
-  id: string;
-  name: string;
-  url: string;
-  price?: string;
-  image?: string;
-  category: string;
-  firstSeen: string;
+interface Position {
+  ticker: string;
+  company: string;
+  allocation: number;
+  entryPrice: number;
+  shares: number;
+  currentPrice: number;
+  priceLive: boolean;
+  marketValue: number;
+  pnl: number;
+  pnlPct: number;
 }
 
-interface Stats {
-  totalChecks: number;
-  totalNewFound: number;
-  lastCheckAt: string;
-  lastNewAt?: string;
+interface DisclosedTrade {
+  ticker: string;
+  company: string;
+  action: 'buy' | 'sell';
+  tradeDate: string;
+  amountRange: [number, number];
+  note?: string;
 }
 
-function formatTime(iso: string) {
+interface Snapshot {
+  asOf: string;
+  inceptionDate: string;
+  startingCapital: number;
+  positions: Position[];
+  totalCost: number;
+  totalMarketValue: number;
+  totalPnl: number;
+  totalPnlPct: number;
+  pricesLive: boolean;
+  liveCount: number;
+  disclosedTrades: DisclosedTrade[];
+}
+
+const usd = (n: number) =>
+  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const usd2 = (n: number) =>
+  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+const sign = (n: number) => `${n >= 0 ? '+' : ''}${usd(n)}`;
+
+function gain(n: number) {
+  return n > 0 ? '#16a34a' : n < 0 ? '#dc2626' : '#6b7280';
+}
+
+function fmtTime(iso: string) {
   return new Date(iso).toLocaleString('zh-TW', {
     timeZone: 'Asia/Taipei',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   });
 }
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '剛剛';
-  if (mins < 60) return `${mins} 分鐘前`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} 小時前`;
-  return `${Math.floor(hrs / 24)} 天前`;
+function amountLabel([lo, hi]: [number, number]) {
+  const m = (v: number) => `$${(v / 1_000_000).toFixed(v < 1_000_000 ? 1 : 0)}M`;
+  const k = (v: number) => `$${(v / 1000).toFixed(0)}K`;
+  const f = (v: number) => (v >= 1_000_000 ? m(v) : k(v));
+  return `${f(lo)} – ${f(hi)}`;
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [data, setData] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [err, setErr] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/products');
-      const data = await res.json();
-      setProducts(data.history ?? []);
-      setStats(data.stats ?? null);
-      setLastRefresh(new Date());
+      setErr(null);
+      const res = await fetch('/api/portfolio', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData(await res.json());
     } catch (e) {
-      console.error(e);
+      setErr(String(e));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-    // 每 3 分鐘自動重新整理
-    const interval = setInterval(fetchData, 3 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    load();
+    const t = setInterval(load, 5 * 60 * 1000); // 每 5 分鐘自動更新
+    return () => clearInterval(t);
+  }, [load]);
 
   return (
-    <div className="min-h-screen" style={{ background: '#f5f0e8' }}>
-      {/* ─── Header ─────────────────────────────────────────────── */}
-      <header style={{ background: '#1a1a1a' }} className="sticky top-0 z-10 shadow-lg">
-        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
+    <div className="min-h-screen pb-16" style={{ background: '#0b1220', color: '#e5e7eb' }}>
+      {/* Header */}
+      <header className="sticky top-0 z-10" style={{ background: '#0b1220', borderBottom: '1px solid #1e293b' }}>
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <p className="text-xs tracking-[4px] mb-1" style={{ color: '#c9a84c' }}>
-              HERMÈS TAIWAN
-            </p>
-            <h1 className="text-xl font-light tracking-widest text-white">
-              新品上架監控
-            </h1>
+            <p className="text-[10px] tracking-[3px]" style={{ color: '#60a5fa' }}>TRUMP TRADES · 跟單模擬</p>
+            <h1 className="text-lg font-bold tracking-wide text-white">川普跟單 $100K 模擬組合</h1>
           </div>
-          <div className="text-right">
-            <span className="inline-flex items-center gap-1.5 text-xs text-green-400">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              監控中
-            </span>
-            <p className="text-xs mt-1" style={{ color: '#888' }}>
-              每 3 分鐘自動檢查
-            </p>
-          </div>
+          <button
+            onClick={load}
+            className="text-xs px-3 py-1.5 rounded-full"
+            style={{ background: '#1e293b', color: '#93c5fd' }}
+          >↻ 更新</button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* ─── Stats Cards ─────────────────────────────────────── */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            {[
-              { label: '總檢查次數', value: stats.totalChecks.toLocaleString(), icon: '🔍' },
-              { label: '累計發現新品', value: stats.totalNewFound.toLocaleString(), icon: '👜' },
-              {
-                label: '上次檢查',
-                value: timeAgo(stats.lastCheckAt),
-                icon: '🕐',
-              },
-              {
-                label: '上次發現新品',
-                value: stats.lastNewAt ? timeAgo(stats.lastNewAt) : '尚未發現',
-                icon: '✨',
-              },
-            ].map((card) => (
-              <div
-                key={card.label}
-                className="rounded-xl p-4 shadow-sm"
-                style={{ background: '#fff', border: '1px solid #e8e0d0' }}
-              >
-                <div className="text-2xl mb-1">{card.icon}</div>
-                <div className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>
-                  {card.value}
-                </div>
-                <div className="text-xs mt-0.5" style={{ color: '#888' }}>
-                  {card.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ─── Products ────────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold tracking-wide" style={{ color: '#1a1a1a' }}>
-            新品紀錄
-            {products.length > 0 && (
-              <span
-                className="ml-2 text-xs px-2 py-0.5 rounded-full font-normal"
-                style={{ background: '#e8632a', color: '#fff' }}
-              >
-                {products.length}
-              </span>
-            )}
-          </h2>
-          <button
-            onClick={fetchData}
-            className="text-xs px-3 py-1.5 rounded-full transition-all"
-            style={{ background: '#1a1a1a', color: '#fff' }}
-          >
-            ↻ 重新整理
-          </button>
-        </div>
-
+      <main className="max-w-3xl mx-auto px-4 py-5">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">
-            <div className="text-4xl mb-3 animate-spin">⟳</div>
-            <p>載入中…</p>
+          <div className="text-center py-24" style={{ color: '#64748b' }}>
+            <div className="text-3xl mb-2 animate-spin">⟳</div>載入中…
           </div>
-        ) : products.length === 0 ? (
-          <div
-            className="rounded-2xl p-16 text-center shadow-sm"
-            style={{ background: '#fff', border: '1px solid #e8e0d0' }}
-          >
-            <div className="text-5xl mb-4">👜</div>
-            <p className="text-lg font-medium mb-2" style={{ color: '#1a1a1a' }}>
-              尚未發現新品
-            </p>
-            <p className="text-sm" style={{ color: '#aaa' }}>
-              監控系統正在運作，發現新品時會立即寄送 Email 通知
-            </p>
+        ) : err ? (
+          <div className="rounded-xl p-5 text-sm" style={{ background: '#1e293b', color: '#fca5a5' }}>
+            載入失敗：{err}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {products.map((p) => (
-              <a
-                key={p.id}
-                href={p.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block rounded-2xl overflow-hidden shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                style={{ background: '#fff', border: '1px solid #e8e0d0' }}
-              >
-                {/* Image */}
-                <div
-                  className="relative h-52 flex items-center justify-center overflow-hidden"
-                  style={{ background: '#f5f0e8' }}
-                >
-                  {p.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <span className="text-6xl">👜</span>
-                  )}
-                  <span
-                    className="absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: '#1a1a1a', color: '#c9a84c' }}
-                  >
-                    {p.category}
-                  </span>
-                </div>
+        ) : data ? (
+          <>
+            {/* 即時狀態提示 */}
+            {!data.pricesLive && (
+              <div className="rounded-xl p-3 mb-4 text-xs leading-relaxed"
+                style={{ background: '#422006', color: '#fcd34d', border: '1px solid #854d0e' }}>
+                ⚠️ 現價未即時抓取（{data.liveCount}/{data.positions.length} 檔成功）。
+                此環境無對外網路時會以建倉價計算、損益顯示為 0。部署到 Vercel 後即為即時股價。
+              </div>
+            )}
 
-                {/* Info */}
-                <div className="p-4">
-                  <h3
-                    className="font-semibold text-sm leading-snug line-clamp-2 mb-1"
-                    style={{ color: '#1a1a1a' }}
-                  >
-                    {p.name}
-                  </h3>
-                  {p.price && (
-                    <p className="text-sm font-medium mb-2" style={{ color: '#c9a84c' }}>
-                      {p.price}
-                    </p>
-                  )}
-                  <p className="text-xs" style={{ color: '#aaa' }}>
-                    發現於 {formatTime(p.firstSeen)}
-                  </p>
-                </div>
+            {/* 總覽卡片 */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <Card label="總市值" value={usd(data.totalMarketValue)} sub={`本金 ${usd(data.startingCapital)}`} />
+              <Card label="總損益" value={sign(data.totalPnl)} color={gain(data.totalPnl)}
+                sub={pct(data.totalPnlPct)} subColor={gain(data.totalPnl)} />
+              <Card label="持股檔數" value={`${data.positions.length} 檔`} sub="等權重 · 排除 DJT" />
+              <Card label="建倉基準日" value={data.inceptionDate} sub={`更新 ${fmtTime(data.asOf)}`} />
+            </div>
 
-                {/* CTA */}
-                <div
-                  className="px-4 py-3 border-t flex items-center justify-between"
-                  style={{ borderColor: '#f0ebe0' }}
-                >
-                  <span className="text-xs font-medium" style={{ color: '#e8632a' }}>
-                    查看商品
-                  </span>
-                  <span style={{ color: '#e8632a' }}>→</span>
+            {/* 持股明細 */}
+            <h2 className="text-sm font-semibold mb-2 mt-6" style={{ color: '#93c5fd' }}>📊 持股明細（損益）</h2>
+            <div className="space-y-2">
+              {data.positions.map((p) => (
+                <div key={p.ticker} className="rounded-xl p-3" style={{ background: '#111a2e', border: '1px solid #1e293b' }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-white">{p.ticker}</span>
+                      <span className="text-xs" style={{ color: '#64748b' }}>{p.company}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold" style={{ color: gain(p.pnl) }}>{sign(p.pnl)}</div>
+                      <div className="text-xs" style={{ color: gain(p.pnl) }}>{pct(p.pnlPct)}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-[11px]" style={{ color: '#94a3b8' }}>
+                    <Cell k="股數" v={p.shares.toFixed(2)} />
+                    <Cell k="成本價" v={usd2(p.entryPrice)} />
+                    <Cell k="現價" v={p.priceLive ? usd2(p.currentPrice) : '—'} />
+                    <Cell k="市值" v={usd(p.marketValue)} />
+                  </div>
                 </div>
-              </a>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
 
-        {/* ─── Footer ──────────────────────────────────────────── */}
-        <footer className="mt-12 text-center text-xs" style={{ color: '#bbb' }}>
-          <p>最後更新：{lastRefresh.toLocaleTimeString('zh-TW')}</p>
-          <p className="mt-1">
-            監控網站 · 每 3 分鐘自動掃描{' '}
-            <a
-              href="https://www.hermes.com/tw/zh/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: '#e8632a' }}
-            >
-              Hermès 台灣官網
-            </a>
-          </p>
-        </footer>
+            {/* 川普申報交易 */}
+            <h2 className="text-sm font-semibold mb-2 mt-7" style={{ color: '#93c5fd' }}>🗂️ 川普 OGE 申報交易（Q1 2026）</h2>
+            <div className="space-y-1.5">
+              {data.disclosedTrades.map((t, i) => (
+                <div key={i} className="rounded-lg px-3 py-2 flex items-center justify-between text-xs"
+                  style={{ background: '#111a2e', border: '1px solid #1e293b' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded font-bold text-[10px]"
+                      style={{ background: t.action === 'buy' ? '#14532d' : '#7f1d1d', color: t.action === 'buy' ? '#86efac' : '#fca5a5' }}>
+                      {t.action === 'buy' ? '買進' : '賣出'}
+                    </span>
+                    <span className="font-bold text-white">{t.ticker}</span>
+                    <span style={{ color: '#64748b' }}>{t.company}</span>
+                  </div>
+                  <div className="text-right" style={{ color: '#94a3b8' }}>
+                    <div>{t.tradeDate}</div>
+                    <div className="text-[10px]" style={{ color: '#64748b' }}>{amountLabel(t.amountRange)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 免責 */}
+            <footer className="mt-8 text-[11px] leading-relaxed" style={{ color: '#475569' }}>
+              <p className="mb-1">
+                資料源：OGE Form 278-T（季度申報，法定延遲 30–45 天，非即時）；現價由 Stooq / Yahoo 即時抓取。
+              </p>
+              <p className="mb-1">
+                策略：排除川普個人控股 DJT，將其申報「買進」的不重複標的等權重配置 $100,000；金額以建倉基準日為準。
+              </p>
+              <p>⚠️ 純屬虛擬模擬與資訊用途，非投資建議。OGE 多筆標註「券商代操」，未必為其本人決策。</p>
+            </footer>
+          </>
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+function Card({ label, value, sub, color, subColor }:
+  { label: string; value: string; sub?: string; color?: string; subColor?: string }) {
+  return (
+    <div className="rounded-xl p-3.5" style={{ background: '#111a2e', border: '1px solid #1e293b' }}>
+      <div className="text-[11px] mb-1" style={{ color: '#64748b' }}>{label}</div>
+      <div className="text-lg font-bold" style={{ color: color ?? '#fff' }}>{value}</div>
+      {sub && <div className="text-[11px] mt-0.5" style={{ color: subColor ?? '#64748b' }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Cell({ k, v }: { k: string; v: string }) {
+  return (
+    <div>
+      <div className="text-[10px]" style={{ color: '#475569' }}>{k}</div>
+      <div className="text-white">{v}</div>
     </div>
   );
 }
