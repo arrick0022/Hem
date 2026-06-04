@@ -3,13 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --hermes-orange: #e8632a;
-  --hermes-dark: #1a1a1a;
-  --hermes-cream: #f5f0e8;
-  --hermes-gold: #c9a84c;
+  --bg: #0b1220;
+  --panel: #111a2e;
+  --border: #1e293b;
+  --gain: #16a34a;
+  --loss: #dc2626;
 }
 
-body {
-  background-color: var(--hermes-cream);
-  color: var(--hermes-dark);
+html, body {
+  background-color: var(--bg);
+  color: #e5e7eb;
+  -webkit-font-smoothing: antialiased;
 }
