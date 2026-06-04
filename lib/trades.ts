@@ -26,8 +26,8 @@ export interface DisclosedTrade {
   note?: string;
 }
 
-/** 模擬組合「建倉基準日」＝ 揭露公布日，亦即最早可跟單的日子 */
-export const INCEPTION_DATE = '2026-05-15';
+/** 模擬組合「建倉基準日」＝ 2026 年初，等於以年初股價建倉、計算 YTD 損益 */
+export const INCEPTION_DATE = '2026-01-01';
 
 /** 虛擬本金 */
 export const STARTING_CAPITAL = 100_000;
