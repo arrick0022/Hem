@@ -7,6 +7,7 @@ interface Position {
   company: string;
   allocation: number;
   entryPrice: number;
+  entryLive: boolean;
   shares: number;
   currentPrice: number;
   priceLive: boolean;
@@ -35,6 +36,7 @@ interface Snapshot {
   totalPnlPct: number;
   pricesLive: boolean;
   liveCount: number;
+  entryLiveCount: number;
   disclosedTrades: DisclosedTrade[];
 }
 
@@ -116,11 +118,11 @@ export default function Home() {
         ) : data ? (
           <>
             {/* 即時狀態提示 */}
-            {!data.pricesLive && (
+            {(!data.pricesLive || data.entryLiveCount < data.positions.length) && (
               <div className="rounded-xl p-3 mb-4 text-xs leading-relaxed"
                 style={{ background: '#422006', color: '#fcd34d', border: '1px solid #854d0e' }}>
-                ⚠️ 現價未即時抓取（{data.liveCount}/{data.positions.length} 檔成功）。
-                此環境無對外網路時會以建倉價計算、損益顯示為 0。部署到 Vercel 後即為即時股價。
+                ⚠️ 現價即時 {data.liveCount}/{data.positions.length}、成本基準採真實歷史價 {data.entryLiveCount}/{data.positions.length}。
+                抓不到的檔位會退回近似種子價，其損益僅供參考。
               </div>
             )}
 

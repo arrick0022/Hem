@@ -59,6 +59,75 @@ async function fromYahoo(ticker: string): Promise<number | null> {
   }
 }
 
+// ── 歷史收盤價（成本基準用） ───────────────────────────────────────────────
+
+function ymd(d: Date): string {
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
+}
+
+// Stooq 歷史：取 [date-10天, date] 視窗，回傳視窗內最後一筆收盤
+async function histStooq(ticker: string, date: string): Promise<number | null> {
+  const end = new Date(date);
+  const start = new Date(end.getTime() - 10 * 86_400_000);
+  const csv = await fetchText(
+    `https://stooq.com/q/d/l/?s=${ticker.toLowerCase()}.us&d1=${ymd(start)}&d2=${ymd(
+      end
+    )}&i=d`
+  );
+  if (!csv) return null;
+  const lines = csv.trim().split('\n');
+  if (lines.length < 2) return null;
+  // Date,Open,High,Low,Close,Volume — 取最後一筆（≤ date 的最近交易日）
+  const last = lines[lines.length - 1].split(',');
+  const close = Number(last[4]);
+  return Number.isFinite(close) && close > 0 ? close : null;
+}
+
+// Yahoo 歷史：同樣取視窗，回傳最後一筆非空收盤
+async function histYahoo(ticker: string, date: string): Promise<number | null> {
+  const end = Math.floor(new Date(date).getTime() / 1000) + 86_400;
+  const start = end - 12 * 86_400;
+  const json = await fetchText(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${start}&period2=${end}&interval=1d`
+  );
+  if (!json) return null;
+  try {
+    const closes = JSON.parse(json)?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+    if (!Array.isArray(closes)) return null;
+    for (let i = closes.length - 1; i >= 0; i--) {
+      if (typeof closes[i] === 'number' && closes[i] > 0) return closes[i];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** 取某日（含之前最近交易日）的收盤價，作為成本基準；皆失敗回 null */
+export async function getHistoricalClose(
+  ticker: string,
+  date: string
+): Promise<number | null> {
+  const s = await histStooq(ticker, date);
+  if (s !== null) return s;
+  return histYahoo(ticker, date);
+}
+
+/** 批次取歷史收盤；抓不到的不收錄 */
+export async function getHistoricalCloses(
+  tickers: string[],
+  date: string
+): Promise<Record<string, number>> {
+  const results = await Promise.all(
+    tickers.map(async (t) => [t, await getHistoricalClose(t, date)] as const)
+  );
+  const map: Record<string, number> = {};
+  for (const [t, p] of results) if (p !== null) map[t] = p;
+  return map;
+}
+
 /** 抓單檔現價，主來源失敗自動退備援；皆失敗回 null */
 export async function getQuote(ticker: string): Promise<Quote | null> {
   const stooq = await fromStooq(ticker);

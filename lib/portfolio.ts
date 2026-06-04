@@ -12,15 +12,17 @@ import {
   DISCLOSED_TRADES,
   type DisclosedTrade,
 } from './trades';
-import { getQuotes } from './prices';
+import { getQuotes, getHistoricalCloses } from './prices';
 
 export interface Position {
   ticker: string;
   company: string;
   /** 每檔等權配置金額（= 成本基準） */
   allocation: number;
-  /** 建倉價（種子或部署端覆寫的歷史價） */
+  /** 建倉價（建倉日真實歷史收盤；抓不到才退回種子價） */
   entryPrice: number;
+  /** 建倉價是否為真實歷史價（false = 退回種子近似值） */
+  entryLive: boolean;
   /** 股數（含小數，模擬可買零股） */
   shares: number;
   /** 現價（即時，抓不到則退回建倉價） */
@@ -43,8 +45,10 @@ export interface PortfolioSnapshot {
   totalPnlPct: number;
   /** 是否全部現價皆為即時 */
   pricesLive: boolean;
-  /** 即時抓到的檔數 / 總檔數 */
+  /** 現價即時抓到的檔數 / 總檔數 */
   liveCount: number;
+  /** 成本基準採用真實歷史價的檔數 */
+  entryLiveCount: number;
   /** 川普申報交易明細（含買賣，供活動列呈現） */
   disclosedTrades: DisclosedTrade[];
 }
@@ -61,11 +65,18 @@ export async function computePortfolio(
   const universe = buildUniverse();
   const n = universe.length;
   const allocation = STARTING_CAPITAL / n;
+  const tickers = universe.map((u) => u.ticker);
 
-  const quotes = liveQuotes ?? (await getQuotes(universe.map((u) => u.ticker)));
+  // 成本基準＝建倉日真實歷史收盤；現價＝即時。兩者同源，避免假成本灌爆報酬。
+  const [entryPrices, quotes] = await Promise.all([
+    getHistoricalCloses(tickers, INCEPTION_DATE),
+    liveQuotes ? Promise.resolve(liveQuotes) : getQuotes(tickers),
+  ]);
 
   const positions: Position[] = universe.map((u) => {
-    const entryPrice = u.seedEntryPrice;
+    const histEntry = entryPrices[u.ticker];
+    const entryLive = typeof histEntry === 'number' && histEntry > 0;
+    const entryPrice = entryLive ? histEntry : u.seedEntryPrice;
     const shares = entryPrice > 0 ? allocation / entryPrice : 0;
     const live = quotes[u.ticker];
     const priceLive = typeof live === 'number' && live > 0;
@@ -77,6 +88,7 @@ export async function computePortfolio(
       company: u.company,
       allocation: round(allocation),
       entryPrice: round(entryPrice),
+      entryLive,
       shares: round(shares, 4),
       currentPrice: round(currentPrice),
       priceLive,
@@ -90,6 +102,7 @@ export async function computePortfolio(
   const totalCost = STARTING_CAPITAL;
   const totalPnl = totalMarketValue - totalCost;
   const liveCount = positions.filter((p) => p.priceLive).length;
+  const entryLiveCount = positions.filter((p) => p.entryLive).length;
 
   return {
     asOf: new Date().toISOString(),
@@ -102,6 +115,7 @@ export async function computePortfolio(
     totalPnlPct: round((totalPnl / totalCost) * 100),
     pricesLive: liveCount === n,
     liveCount,
+    entryLiveCount,
     disclosedTrades: DISCLOSED_TRADES,
   };
 }
