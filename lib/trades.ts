@@ -2,9 +2,11 @@
 //  川普交易資料
 //
 //  來源：OGE Form 278-T（Periodic Transaction Report）。
-//  交易清單載入自 data/trades.json，該檔由 scripts/fetch-oge.mjs 透過
-//  GitHub Actions 定期從 OGE 官方入口抓取、解析後自動更新（見該腳本）。
-//  解析失敗或檔案異常時，退回本檔內建的 FALLBACK_TRADES，確保不中斷。
+//  交易清單載入自 data/trades.json（單一資料源，可手動編輯）。
+//  ※ OGE 官方 PDF 為糊掉的掃描檔、無 ticker，無法可靠自動解析，
+//    故採半自動：新季度申報公布後，手動更新 data/trades.json 即可
+//    （見 README「更新交易清單」）。push 後 Vercel 會自動重新部署。
+//  檔案異常時退回本檔內建的 FALLBACK_TRADES，確保儀表板不中斷。
 //
 //  注意：
 //  - OGE 申報法定延遲約 30–45 天，非即時。

@@ -9,9 +9,9 @@
 ## 它在做什麼
 
 - **資料源**：OGE Form 278-T（川普季度財產申報）。注意申報**法定延遲 30–45 天，非即時**。
-  交易清單存在 `data/trades.json`，由 `.github/workflows/update-oge.yml`（每週 + 可手動觸發）
-  執行 `scripts/fetch-oge.mjs`，從 OGE 官方入口抓取 PDF、解析後**自動 commit 更新**
-  → Vercel 偵測到推送即自動重新部署。解析失敗時保留原資料、不中斷。
+  交易清單存在 `data/trades.json`（單一資料源）。
+  > 註：OGE 官方 PDF 實測為糊掉的掃描檔、且無股票代號，無法可靠自動解析，
+  > 故採**半自動**——新季度申報公布後手動更新 JSON（見下「更新交易清單」）。
 - **策略**：排除 `DJT`（佔比 >99%），把川普「買進」過的不重複標的**等權重**配置 $100,000。
 - **現價**：由 Stooq / Yahoo 免金鑰端點即時抓取（伺服器端），計算市值與未實現損益。
 
@@ -48,14 +48,20 @@ npm run dev      # http://localhost:3000
 
 | 檔案 | 作用 |
 |---|---|
-| `data/trades.json` | 川普申報交易清單（OGE 自動更新腳本維護的單一資料源） |
+| `data/trades.json` | 川普申報交易清單（單一資料源，手動更新） |
 | `lib/trades.ts` | 載入交易、$100K 本金、排除 DJT、標的池（含退場資料） |
 | `lib/prices.ts` | 即時現價 + 建倉日歷史價抓取（Stooq 主、Yahoo 備援） |
 | `lib/portfolio.ts` | 模擬引擎：等權重配置、市值與損益計算 |
-| `scripts/fetch-oge.mjs` | 從 OGE 抓取/解析 278-T PDF，更新 data/trades.json |
-| `.github/workflows/update-oge.yml` | 每週自動執行上述腳本並 commit 更新 |
 | `app/api/portfolio/route.ts` | 回傳組合快照 JSON |
 | `app/page.tsx` | 行動優先的損益儀表板 |
+
+## 更新交易清單（新季度申報公布時）
+
+1. 編輯 `data/trades.json`：在 `trades` 陣列加入新交易
+   （`ticker` / `company` / `action`：`buy`|`sell` / `tradeDate`:`YYYY-MM-DD` /
+   `amountRange`:`[低, 高]`），並把 `updatedAt` 改成今天。
+2. commit 並 push 到 `main` → Vercel 自動重新部署，儀表板即顯示新資料。
+3. 新買進的標的會自動納入等權重組合；`DJT` 一律排除。
 
 ## 已知限制
 
