@@ -276,20 +276,24 @@ function PostsSection({ posts }: { posts: PostsData | null }) {
               className="block text-sm leading-snug mb-2" style={{ color: '#e5e7eb' }}>
               {p.text.length > 220 ? p.text.slice(0, 220) + '…' : p.text}
             </a>
-            {(p.analysis.topics.length > 0 || p.analysis.tickers.length > 0) && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {p.analysis.topics.map((t) => (
-                  <span key={t} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: '#1e293b', color: '#93c5fd' }}>{t}</span>
-                ))}
-                {p.analysis.tickers.map((t) => (
-                  <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: '#1e293b', color: '#fcd34d' }}>${t}</span>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-1 mb-2">
+              {p.analysis.topics.map((t) => (
+                <span key={t} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: '#1e293b', color: '#93c5fd' }}>{t}</span>
+              ))}
+              {p.analysis.tickers.map((t) => (
+                <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: '#1e293b', color: '#fcd34d' }}>${t}</span>
+              ))}
+              {p.analysis.topics.length === 0 && p.analysis.tickers.length === 0 && (
+                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: '#1e293b', color: '#64748b' }}>
+                  未點名個股／總經主題 → 僅看大盤
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-3 text-[11px]" style={{ color: '#64748b' }}>
               {p.reactions.map((r) => (
                 <span key={r.ticker}>
-                  {r.ticker} 貼文後 <span style={{ color: r.sincePct == null ? '#64748b' : gain(r.sincePct) }}>
+                  {r.ticker === 'SPY' ? 'SPY 大盤' : r.ticker} 貼文後{' '}
+                  <span style={{ color: r.sincePct == null ? '#64748b' : gain(r.sincePct) }}>
                     {r.sincePct == null ? '—' : pct(r.sincePct)}
                   </span>
                 </span>
