@@ -45,6 +45,7 @@ interface Reaction { ticker: string; sincePct: number | null; }
 interface PostAnalysis { tickers: string[]; topics: string[]; lean: 'bullish' | 'bearish' | 'neutral'; keywords: string[]; }
 interface TruthPost {
   id: string; createdAt: string; text: string; url: string;
+  textZh?: string | null;
   analysis: PostAnalysis; reactions: Reaction[];
 }
 interface PostsData { asOf: string; live: boolean; posts: TruthPost[]; }
@@ -272,9 +273,14 @@ function PostsSection({ posts }: { posts: PostsData | null }) {
                 {lean.label}
               </span>
             </div>
-            <a href={p.url} target="_blank" rel="noopener noreferrer"
-              className="block text-sm leading-snug mb-2" style={{ color: '#e5e7eb' }}>
-              {p.text.length > 220 ? p.text.slice(0, 220) + '…' : p.text}
+            <a href={p.url} target="_blank" rel="noopener noreferrer" className="block mb-2">
+              <span className="block text-sm leading-snug" style={{ color: '#cbd5e1' }}>{p.text}</span>
+              {p.textZh && (
+                <span className="block text-sm leading-snug mt-1.5 pl-2"
+                  style={{ color: '#e5e7eb', borderLeft: '2px solid #334155' }}>
+                  🇹🇼 {p.textZh}
+                </span>
+              )}
             </a>
             <div className="flex flex-wrap gap-1 mb-2">
               {p.analysis.topics.map((t) => (

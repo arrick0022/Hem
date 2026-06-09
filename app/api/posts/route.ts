@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getLatestPosts } from '@/lib/truth';
 import { analyzePost } from '@/lib/analyze';
 import { getQuote, getHistoricalClose } from '@/lib/prices';
+import { translateToZh } from '@/lib/translate';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,10 +33,13 @@ export async function GET() {
         const date = p.createdAt.slice(0, 10);
         // 大盤 + 被點名個股（上限 3 檔，避免過多請求）
         const tickers = ['SPY', ...analysis.tickers.slice(0, 3)];
-        const reactions: Reaction[] = await Promise.all(
-          tickers.map(async (t) => ({ ticker: t, sincePct: await reactionSince(t, date) }))
-        );
-        return { ...p, analysis, reactions };
+        const [reactions, textZh] = await Promise.all([
+          Promise.all(
+            tickers.map(async (t) => ({ ticker: t, sincePct: await reactionSince(t, date) }))
+          ) as Promise<Reaction[]>,
+          translateToZh(p.text),
+        ]);
+        return { ...p, analysis, reactions, textZh };
       })
     );
 
