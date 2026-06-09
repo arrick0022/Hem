@@ -41,6 +41,14 @@ interface Snapshot {
   tradesUpdatedAt: string;
 }
 
+interface Reaction { ticker: string; sincePct: number | null; }
+interface PostAnalysis { tickers: string[]; topics: string[]; lean: 'bullish' | 'bearish' | 'neutral'; keywords: string[]; }
+interface TruthPost {
+  id: string; createdAt: string; text: string; url: string;
+  analysis: PostAnalysis; reactions: Reaction[];
+}
+interface PostsData { asOf: string; live: boolean; posts: TruthPost[]; }
+
 const usd = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const usd2 = (n: number) =>
@@ -68,15 +76,20 @@ function amountLabel([lo, hi]: [number, number]) {
 
 export default function Home() {
   const [data, setData] = useState<Snapshot | null>(null);
+  const [posts, setPosts] = useState<PostsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setErr(null);
-      const res = await fetch('/api/portfolio', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const [pf, ps] = await Promise.all([
+        fetch('/api/portfolio', { cache: 'no-store' }),
+        fetch('/api/posts', { cache: 'no-store' }).catch(() => null),
+      ]);
+      if (!pf.ok) throw new Error(`HTTP ${pf.status}`);
+      setData(await pf.json());
+      if (ps && ps.ok) setPosts(await ps.json());
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -135,6 +148,10 @@ export default function Home() {
               <Card label="持股檔數" value={`${data.positions.length} 檔`} sub="等權重 · 排除 DJT" />
               <Card label="建倉基準日" value={data.inceptionDate} sub={`更新 ${fmtTime(data.asOf)}`} />
             </div>
+
+            {/* 川普貼文 × 市場反應 */}
+            <h2 className="text-sm font-semibold mb-2 mt-6" style={{ color: '#93c5fd' }}>📣 川普貼文 × 市場反應</h2>
+            <PostsSection posts={posts} />
 
             {/* 持股明細 */}
             <h2 className="text-sm font-semibold mb-2 mt-6" style={{ color: '#93c5fd' }}>📊 持股明細（損益）</h2>
@@ -223,6 +240,67 @@ function Cell({ k, v }: { k: string; v: string }) {
     <div>
       <div className="text-[10px]" style={{ color: '#475569' }}>{k}</div>
       <div className="text-white">{v}</div>
+    </div>
+  );
+}
+
+const LEAN_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
+  bullish: { label: '偏多', bg: '#14532d', fg: '#86efac' },
+  bearish: { label: '偏空', bg: '#7f1d1d', fg: '#fca5a5' },
+  neutral: { label: '中性', bg: '#334155', fg: '#cbd5e1' },
+};
+
+function PostsSection({ posts }: { posts: PostsData | null }) {
+  if (!posts || !posts.live || posts.posts.length === 0) {
+    return (
+      <div className="rounded-xl p-3 mb-2 text-xs leading-relaxed"
+        style={{ background: '#0f1c33', color: '#94a3b8', border: '1px solid #1e293b' }}>
+        尚未取得貼文。Truth Social / 鏡像來源在此環境連不到（沙箱白名單），
+        <span style={{ color: '#fcd34d' }}>部署到 Vercel 後會即時抓取最新貼文並分析</span>。
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {posts.posts.map((p) => {
+        const lean = LEAN_STYLE[p.analysis.lean] ?? LEAN_STYLE.neutral;
+        return (
+          <div key={p.id} className="rounded-xl p-3" style={{ background: '#111a2e', border: '1px solid #1e293b' }}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px]" style={{ color: '#64748b' }}>{fmtTime(p.createdAt)}</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: lean.bg, color: lean.fg }}>
+                {lean.label}
+              </span>
+            </div>
+            <a href={p.url} target="_blank" rel="noopener noreferrer"
+              className="block text-sm leading-snug mb-2" style={{ color: '#e5e7eb' }}>
+              {p.text.length > 220 ? p.text.slice(0, 220) + '…' : p.text}
+            </a>
+            {(p.analysis.topics.length > 0 || p.analysis.tickers.length > 0) && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {p.analysis.topics.map((t) => (
+                  <span key={t} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: '#1e293b', color: '#93c5fd' }}>{t}</span>
+                ))}
+                {p.analysis.tickers.map((t) => (
+                  <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: '#1e293b', color: '#fcd34d' }}>${t}</span>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-3 text-[11px]" style={{ color: '#64748b' }}>
+              {p.reactions.map((r) => (
+                <span key={r.ticker}>
+                  {r.ticker} 貼文後 <span style={{ color: r.sincePct == null ? '#64748b' : gain(r.sincePct) }}>
+                    {r.sincePct == null ? '—' : pct(r.sincePct)}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <p className="text-[10px] leading-relaxed" style={{ color: '#475569' }}>
+        「貼文後」＝該股自貼文當日收盤至今的漲跌%，僅為時間先後的同步現象，<b>不代表因果</b>。
+      </p>
     </div>
   );
 }
