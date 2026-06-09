@@ -10,6 +10,7 @@ import {
   STARTING_CAPITAL,
   INCEPTION_DATE,
   DISCLOSED_TRADES,
+  TRADES_UPDATED_AT,
   type DisclosedTrade,
 } from './trades';
 import { getQuotes, getHistoricalCloses } from './prices';
@@ -51,6 +52,8 @@ export interface PortfolioSnapshot {
   entryLiveCount: number;
   /** 川普申報交易明細（含買賣，供活動列呈現） */
   disclosedTrades: DisclosedTrade[];
+  /** 交易清單最後由 OGE 更新的日期 */
+  tradesUpdatedAt: string;
 }
 
 const round = (n: number, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
@@ -117,5 +120,6 @@ export async function computePortfolio(
     liveCount,
     entryLiveCount,
     disclosedTrades: DISCLOSED_TRADES,
+    tradesUpdatedAt: TRADES_UPDATED_AT,
   };
 }

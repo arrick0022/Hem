@@ -1,0 +1,42 @@
+name: Update OGE trades
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'   # 每週一 13:00 UTC 檢查一次 OGE 新申報
+  workflow_dispatch: {}      # 也可在 Actions 頁面手動觸發
+
+permissions:
+  contents: write            # 允許把更新後的 data/trades.json commit 回來
+
+concurrency:
+  group: update-oge
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install fetcher deps
+        run: cd scripts && npm install --no-audit --no-fund
+
+      - name: Fetch & parse OGE 278-T
+        run: node scripts/fetch-oge.mjs
+
+      - name: Commit updated trades (if changed)
+        run: |
+          if git diff --quiet -- data/trades.json; then
+            echo "No change in data/trades.json"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/trades.json
+            git commit -m "Auto-update OGE trades data"
+            git push
+          fi

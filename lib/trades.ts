@@ -1,16 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  川普交易資料（種子資料集）
+//  川普交易資料
 //
-//  來源：OGE Form 278-T（Periodic Transaction Report），2026 Q1 申報，
-//        2026-05 公布。約 3,600+ 筆交易，金額以「區間」揭露（無確切價）。
+//  來源：OGE Form 278-T（Periodic Transaction Report）。
+//  交易清單載入自 data/trades.json，該檔由 scripts/fetch-oge.mjs 透過
+//  GitHub Actions 定期從 OGE 官方入口抓取、解析後自動更新（見該腳本）。
+//  解析失敗或檔案異常時，退回本檔內建的 FALLBACK_TRADES，確保不中斷。
 //
 //  注意：
 //  - OGE 申報法定延遲約 30–45 天，非即時。
-//  - 本檔為人工整理的「精選代表性交易」，非完整 3,600 筆。
-//    部署後可由 lib/oge.ts 從 OGE 官方入口抓取 PDF 自動更新。
-//  - entryPrice 為「概略」種子價（標 approx），實際成本基準應由
-//    部署端以建倉日歷史股價覆寫；現價一律由 lib/prices.ts 即時抓取。
+//  - 成本基準由 lib/prices.ts 以建倉日歷史股價計算；現價亦即時抓取。
+//    SEED_ENTRY_PRICES 僅作離線退場用的近似值。
 // ─────────────────────────────────────────────────────────────────────────
+
+import tradesJson from '@/data/trades.json';
 
 export type Action = 'buy' | 'sell';
 
@@ -35,29 +37,32 @@ export const STARTING_CAPITAL = 100_000;
 /** 排除的代號（川普個人控股，佔比 >99%，留著會失去分散意義） */
 export const EXCLUDED_TICKERS = new Set(['DJT']);
 
-// ─── 川普 Q1 2026 申報交易（精選） ─────────────────────────────────────────
-// 多數標註 "Discretion Exercised / Broker Acted as Agent" = 券商代操帳戶。
-export const DISCLOSED_TRADES: DisclosedTrade[] = [
-  // ── 買進 ──
-  { ticker: 'NVDA',  company: 'NVIDIA',              action: 'buy',  tradeDate: '2026-01-21', amountRange: [1_000_000, 5_000_000], note: '券商代操' },
-  { ticker: 'AVGO',  company: 'Broadcom',            action: 'buy',  tradeDate: '2026-01-28', amountRange: [1_000_000, 5_000_000], note: '券商代操' },
-  { ticker: 'MSFT',  company: 'Microsoft',           action: 'buy',  tradeDate: '2026-01-15', amountRange: [1_000_000, 5_000_000], note: '券商代操' },
-  { ticker: 'AMZN',  company: 'Amazon',              action: 'buy',  tradeDate: '2026-01-15', amountRange: [1_000_000, 5_000_000], note: '券商代操' },
-  { ticker: 'ORCL',  company: 'Oracle',              action: 'buy',  tradeDate: '2026-02-03', amountRange: [1_000_000, 5_000_000], note: '科技倉位' },
-  { ticker: 'AMD',   company: 'Advanced Micro Devices', action: 'buy', tradeDate: '2026-02-05', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'INTC',  company: 'Intel',               action: 'buy',  tradeDate: '2026-02-05', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'GS',    company: 'Goldman Sachs',       action: 'buy',  tradeDate: '2026-02-11', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'GOOGL', company: 'Alphabet',            action: 'buy',  tradeDate: '2026-02-18', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'ABNB',  company: 'Airbnb',              action: 'buy',  tradeDate: '2026-02-24', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'DASH',  company: 'DoorDash',            action: 'buy',  tradeDate: '2026-02-24', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'MU',    company: 'Micron Technology',   action: 'buy',  tradeDate: '2026-03-03', amountRange: [500_000, 1_000_000], note: '券商代操' },
-  { ticker: 'BE',    company: 'Bloom Energy',        action: 'buy',  tradeDate: '2026-03-10', amountRange: [500_000, 1_000_000], note: '券商代操' },
-
-  // ── 賣出（2/10 大規模減碼） ──
-  { ticker: 'MSFT',  company: 'Microsoft',           action: 'sell', tradeDate: '2026-02-10', amountRange: [5_000_000, 25_000_000], note: '單日大減碼' },
-  { ticker: 'AMZN',  company: 'Amazon',              action: 'sell', tradeDate: '2026-02-10', amountRange: [5_000_000, 25_000_000], note: '單日大減碼' },
-  { ticker: 'META',  company: 'Meta Platforms',      action: 'sell', tradeDate: '2026-02-10', amountRange: [5_000_000, 25_000_000], note: '單日大減碼' },
+// ─── 內建退場資料（data/trades.json 異常時使用，確保儀表板不中斷） ──────────
+const FALLBACK_TRADES: DisclosedTrade[] = [
+  { ticker: 'NVDA',  company: 'NVIDIA',                  action: 'buy',  tradeDate: '2026-01-21', amountRange: [1_000_000, 5_000_000] },
+  { ticker: 'AVGO',  company: 'Broadcom',                action: 'buy',  tradeDate: '2026-01-28', amountRange: [1_000_000, 5_000_000] },
+  { ticker: 'MSFT',  company: 'Microsoft',               action: 'buy',  tradeDate: '2026-01-15', amountRange: [1_000_000, 5_000_000] },
+  { ticker: 'AMZN',  company: 'Amazon',                  action: 'buy',  tradeDate: '2026-01-15', amountRange: [1_000_000, 5_000_000] },
+  { ticker: 'ORCL',  company: 'Oracle',                  action: 'buy',  tradeDate: '2026-02-03', amountRange: [1_000_000, 5_000_000] },
 ];
+
+function loadTrades(): DisclosedTrade[] {
+  const raw = (tradesJson as { trades?: unknown }).trades;
+  if (!Array.isArray(raw) || raw.length === 0) return FALLBACK_TRADES;
+  const valid = (raw as DisclosedTrade[]).filter(
+    (t) =>
+      t && typeof t.ticker === 'string' && (t.action === 'buy' || t.action === 'sell') &&
+      Array.isArray(t.amountRange) && t.amountRange.length === 2
+  );
+  return valid.length > 0 ? valid : FALLBACK_TRADES;
+}
+
+/** 川普申報交易（載入自 data/trades.json，由 OGE 自動更新腳本維護） */
+export const DISCLOSED_TRADES: DisclosedTrade[] = loadTrades();
+
+/** 交易清單最後更新日（OGE 抓取時間，供 UI 顯示） */
+export const TRADES_UPDATED_AT: string =
+  (tradesJson as { updatedAt?: string }).updatedAt ?? '';
 
 // ─── 概略種子建倉價（USD，approx，部署端應以歷史股價覆寫） ──────────────────
 export const SEED_ENTRY_PRICES: Record<string, number> = {

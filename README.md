@@ -9,8 +9,9 @@
 ## 它在做什麼
 
 - **資料源**：OGE Form 278-T（川普季度財產申報）。注意申報**法定延遲 30–45 天，非即時**。
-  目前以 `lib/trades.ts` 內人工整理的 Q1 2026 代表性交易為準；
-  `lib/oge.ts` 提供從 OGE 官方入口自動抓取的起點（PDF 逐筆解析為後續工作）。
+  交易清單存在 `data/trades.json`，由 `.github/workflows/update-oge.yml`（每週 + 可手動觸發）
+  執行 `scripts/fetch-oge.mjs`，從 OGE 官方入口抓取 PDF、解析後**自動 commit 更新**
+  → Vercel 偵測到推送即自動重新部署。解析失敗時保留原資料、不中斷。
 - **策略**：排除 `DJT`（佔比 >99%），把川普「買進」過的不重複標的**等權重**配置 $100,000。
 - **現價**：由 Stooq / Yahoo 免金鑰端點即時抓取（伺服器端），計算市值與未實現損益。
 
@@ -47,10 +48,12 @@ npm run dev      # http://localhost:3000
 
 | 檔案 | 作用 |
 |---|---|
-| `lib/trades.ts` | 川普申報交易種子資料、$100K 本金、排除 DJT、標的池 |
-| `lib/prices.ts` | 即時股價抓取（Stooq 主、Yahoo 備援） |
+| `data/trades.json` | 川普申報交易清單（OGE 自動更新腳本維護的單一資料源） |
+| `lib/trades.ts` | 載入交易、$100K 本金、排除 DJT、標的池（含退場資料） |
+| `lib/prices.ts` | 即時現價 + 建倉日歷史價抓取（Stooq 主、Yahoo 備援） |
 | `lib/portfolio.ts` | 模擬引擎：等權重配置、市值與損益計算 |
-| `lib/oge.ts` | OGE 官方入口抓取（自動更新起點） |
+| `scripts/fetch-oge.mjs` | 從 OGE 抓取/解析 278-T PDF，更新 data/trades.json |
+| `.github/workflows/update-oge.yml` | 每週自動執行上述腳本並 commit 更新 |
 | `app/api/portfolio/route.ts` | 回傳組合快照 JSON |
 | `app/page.tsx` | 行動優先的損益儀表板 |
 

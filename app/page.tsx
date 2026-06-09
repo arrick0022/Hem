@@ -38,6 +38,7 @@ interface Snapshot {
   liveCount: number;
   entryLiveCount: number;
   disclosedTrades: DisclosedTrade[];
+  tradesUpdatedAt: string;
 }
 
 const usd = (n: number) =>
@@ -161,7 +162,14 @@ export default function Home() {
             </div>
 
             {/* 川普申報交易 */}
-            <h2 className="text-sm font-semibold mb-2 mt-7" style={{ color: '#93c5fd' }}>🗂️ 川普 OGE 申報交易（Q1 2026）</h2>
+            <h2 className="text-sm font-semibold mb-2 mt-7 flex items-center justify-between" style={{ color: '#93c5fd' }}>
+              <span>🗂️ 川普 OGE 申報交易</span>
+              {data.tradesUpdatedAt && (
+                <span className="text-[10px] font-normal" style={{ color: '#475569' }}>
+                  清單更新 {data.tradesUpdatedAt}
+                </span>
+              )}
+            </h2>
             <div className="space-y-1.5">
               {data.disclosedTrades.map((t, i) => (
                 <div key={i} className="rounded-lg px-3 py-2 flex items-center justify-between text-xs"

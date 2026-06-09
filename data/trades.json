@@ -1,0 +1,22 @@
+{
+  "updatedAt": "2026-06-04",
+  "source": "curated-seed (Q1 2026 representative; replaced automatically by scripts/fetch-oge.mjs)",
+  "trades": [
+    { "ticker": "NVDA",  "company": "NVIDIA",                  "action": "buy",  "tradeDate": "2026-01-21", "amountRange": [1000000, 5000000],  "note": "券商代操" },
+    { "ticker": "AVGO",  "company": "Broadcom",                "action": "buy",  "tradeDate": "2026-01-28", "amountRange": [1000000, 5000000],  "note": "券商代操" },
+    { "ticker": "MSFT",  "company": "Microsoft",               "action": "buy",  "tradeDate": "2026-01-15", "amountRange": [1000000, 5000000],  "note": "券商代操" },
+    { "ticker": "AMZN",  "company": "Amazon",                  "action": "buy",  "tradeDate": "2026-01-15", "amountRange": [1000000, 5000000],  "note": "券商代操" },
+    { "ticker": "ORCL",  "company": "Oracle",                  "action": "buy",  "tradeDate": "2026-02-03", "amountRange": [1000000, 5000000],  "note": "科技倉位" },
+    { "ticker": "AMD",   "company": "Advanced Micro Devices",  "action": "buy",  "tradeDate": "2026-02-05", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "INTC",  "company": "Intel",                   "action": "buy",  "tradeDate": "2026-02-05", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "GS",    "company": "Goldman Sachs",           "action": "buy",  "tradeDate": "2026-02-11", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "GOOGL", "company": "Alphabet",                "action": "buy",  "tradeDate": "2026-02-18", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "ABNB",  "company": "Airbnb",                  "action": "buy",  "tradeDate": "2026-02-24", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "DASH",  "company": "DoorDash",                "action": "buy",  "tradeDate": "2026-02-24", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "MU",    "company": "Micron Technology",       "action": "buy",  "tradeDate": "2026-03-03", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "BE",    "company": "Bloom Energy",            "action": "buy",  "tradeDate": "2026-03-10", "amountRange": [500000, 1000000],   "note": "券商代操" },
+    { "ticker": "MSFT",  "company": "Microsoft",               "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" },
+    { "ticker": "AMZN",  "company": "Amazon",                  "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" },
+    { "ticker": "META",  "company": "Meta Platforms",          "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" }
+  ]
+}
