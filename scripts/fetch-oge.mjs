@@ -177,6 +177,13 @@ async function main() {
     if (!text) continue;
     const parsed = parseTransactions(text);
     console.log(`[oge] parsed ${parsed.length} from ${url}`);
+    // 診斷：解析不到時，印出抽取文字的長度與樣本，供調校解析規則
+    if (parsed.length === 0) {
+      console.log(`[oge][debug] extracted text length = ${text.length}`);
+      console.log('[oge][debug] ----- first 1800 chars -----');
+      console.log(text.slice(0, 1800));
+      console.log('[oge][debug] ----- end sample -----');
+    }
     all = all.concat(parsed);
   }
 
