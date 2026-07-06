@@ -71,6 +71,8 @@ export const SEED_ENTRY_PRICES: Record<string, number> = {
   NVDA: 135, AVGO: 235, MSFT: 460, AMZN: 215, ORCL: 175,
   AMD: 125, INTC: 22, GS: 620, GOOGL: 175, ABNB: 135,
   DASH: 200, MU: 95, BE: 25,
+  // Q2 新增（近似離線退場值；線上以年初歷史價為準）
+  META: 700, PLTR: 140, UNH: 320, GE: 240, HOOD: 85, COIN: 280,
 };
 
 export interface UniverseStock {

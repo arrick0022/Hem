@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-06-04",
-  "source": "curated-seed (Q1 2026 representative; replaced automatically by scripts/fetch-oge.mjs)",
+  "updatedAt": "2026-07-06",
+  "source": "OGE 278-T Q1 (1-3月) + Q2 (4-5月, whitehouse 4.20 & OGE 5.08 申報)；Q2 部分金額/日期為近似，待逐筆核實",
   "trades": [
     { "ticker": "NVDA",  "company": "NVIDIA",                  "action": "buy",  "tradeDate": "2026-01-21", "amountRange": [1000000, 5000000],  "note": "券商代操" },
     { "ticker": "AVGO",  "company": "Broadcom",                "action": "buy",  "tradeDate": "2026-01-28", "amountRange": [1000000, 5000000],  "note": "券商代操" },
@@ -17,6 +17,16 @@
     { "ticker": "BE",    "company": "Bloom Energy",            "action": "buy",  "tradeDate": "2026-03-10", "amountRange": [500000, 1000000],   "note": "券商代操" },
     { "ticker": "MSFT",  "company": "Microsoft",               "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" },
     { "ticker": "AMZN",  "company": "Amazon",                  "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" },
-    { "ticker": "META",  "company": "Meta Platforms",          "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" }
+    { "ticker": "META",  "company": "Meta Platforms",          "action": "sell", "tradeDate": "2026-02-10", "amountRange": [5000000, 25000000], "note": "單日大減碼" },
+
+    { "ticker": "META",  "company": "Meta Platforms",          "action": "buy",  "tradeDate": "2026-04-20", "amountRange": [5000000, 25000000], "note": "Q2 4月申報｜2月賣出後回補" },
+    { "ticker": "MSFT",  "company": "Microsoft",               "action": "buy",  "tradeDate": "2026-04-20", "amountRange": [5000000, 25000000], "note": "Q2 4月申報" },
+    { "ticker": "PLTR",  "company": "Palantir Technologies",   "action": "buy",  "tradeDate": "2026-04-20", "amountRange": [1000000, 5000000],  "note": "Q2 4月申報｜買後於 Truth Social 公開稱讚，利益衝突爭議" },
+    { "ticker": "UNH",   "company": "UnitedHealth Group",      "action": "buy",  "tradeDate": "2026-04-20", "amountRange": [1000000, 5000000],  "note": "Q2 4月申報" },
+    { "ticker": "AMZN",  "company": "Amazon",                  "action": "buy",  "tradeDate": "2026-05-08", "amountRange": [1000000, 5000000],  "note": "Q2 5月申報｜加碼（金額近似）" },
+    { "ticker": "GE",    "company": "GE Aerospace",            "action": "buy",  "tradeDate": "2026-05-08", "amountRange": [1000000, 5000000],  "note": "Q2 5月申報｜國防（金額近似）" },
+    { "ticker": "HOOD",  "company": "Robinhood Markets",       "action": "buy",  "tradeDate": "2026-05-08", "amountRange": [500000, 1000000],   "note": "Q2 5月申報｜金融（金額近似）" },
+    { "ticker": "COIN",  "company": "Coinbase Global",         "action": "buy",  "tradeDate": "2026-05-08", "amountRange": [500000, 1000000],   "note": "Q2 5月申報｜加密（金額近似）" },
+    { "ticker": "PLTR",  "company": "Palantir Technologies",   "action": "buy",  "tradeDate": "2026-05-08", "amountRange": [1000000, 5000000],  "note": "Q2 5月申報｜加碼" }
   ]
 }
