@@ -1,0 +1,55 @@
+name: Update OGE trades
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'   # 每週一 13:00 UTC 檢查 OGE 新申報
+  workflow_dispatch:        # 也可在 Actions 頁面手動觸發
+    inputs:
+      dry_run:
+        description: '只解析並印出 DIAG，不寫檔（調規則時用）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write            # 允許把更新後的 data/trades.json commit 回來
+
+concurrency:
+  group: update-oge
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30      # OCR 較慢，放寬
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 掃描檔 OCR 需要：pdftoppm(poppler) + tesseract
+      - name: Install OCR toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils tesseract-ocr
+
+      - name: Install fetcher deps
+        run: cd scripts && npm install --no-audit --no-fund
+
+      - name: Fetch & parse OGE 278-T
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node scripts/fetch-oge.mjs
+
+      - name: Commit updated trades (if changed)
+        run: |
+          if git diff --quiet -- data/trades.json; then
+            echo "No change in data/trades.json"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/trades.json
+            git commit -m "Auto-update OGE trades data"
+            git push
+          fi

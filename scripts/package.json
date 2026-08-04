@@ -1,0 +1,8 @@
+{
+  "name": "trump-trades-oge-fetcher",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
+  }
+}
