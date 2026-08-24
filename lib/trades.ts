@@ -73,6 +73,9 @@ export const SEED_ENTRY_PRICES: Record<string, number> = {
   DASH: 200, MU: 95, BE: 25,
   // Q2 新增（近似離線退場值；線上以年初歷史價為準）
   META: 700, PLTR: 140, UNH: 320, GE: 240, HOOD: 85, COIN: 280,
+  // 6月批次新增
+  AAPL: 250, 'BRK-B': 490, V: 350, MA: 560, CTAS: 210, HD: 380,
+  FIS: 75, MSI: 470,
 };
 
 export interface UniverseStock {
